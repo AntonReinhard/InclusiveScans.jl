@@ -31,8 +31,8 @@ yticks_str = [
 ]
 
 
-SIZES = [Int64(2^i) for i = 1:2:25]
-TYPES = (Float32, Float64, Int32, Int64, ComplexF32, ComplexF64)
+SIZES = [Int64(2^i) for i = 0:2:30]
+TYPES = (Float32, Float64, Int32, Int64, ComplexF32)
 
 _str(n::Int64) = L"2^{%$(round(Int, log2(n)))}"
 

@@ -6,10 +6,11 @@ using Random
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 10.0
 
 RNG = Xoshiro(137)  # Fixed seed
-SIZES = [Int64(2^i) for i = 1:2:25]
-TYPES = (Float32, Float64, Int32, Int64, ComplexF32, ComplexF64)
+SIZES = [Int64(2^i) for i = 0:2:30]
+TYPES = (Float16, Float32, Float64, Int32, Int64, ComplexF32)
 
 SUITE = BenchmarkGroup()
+result = BenchmarkGroup()
 
 SUITE["CPU"] = BenchmarkGroup()
 SUITE["CUDA"] = BenchmarkGroup()
@@ -21,6 +22,8 @@ for T in TYPES
     SUITE["CUDA_LIB"][T] = BenchmarkGroup()
 
     for N in SIZES
+        @info "Type $T Size $N"
+
         # Generate random input
         h_in = rand(RNG, T, N)
         h_out = similar(h_in)
@@ -29,18 +32,24 @@ for T in TYPES
         d_out = similar(d_in)
 
         # Run inclusive scan on GPU
-        SUITE["CUDA"][T][N] =
-            @benchmarkable InclusiveScans.largeArrayScanInclusive!(out, in, Int32(n)) setup =
-                (in = $d_in; out = $d_out; n = $N)
+        cuda_b = @benchmarkable (CUDA.@sync InclusiveScans.largeArrayScanInclusive!(
+            out,
+            in,
+            Int32(n),
+        )) setup = (in = $d_in; out = $d_out; n = $N)
+        tune!(cuda_b)
+        SUITE["CUDA"][T][N] = run(cuda_b)
 
-        SUITE["CUDA_LIB"][T][N] =
-            @benchmarkable CUDA.accumulate!(+, out, in) setup = (in = $d_in; out = $d_out)
+        cuda_lib_b = @benchmarkable (CUDA.@sync CUDA.accumulate!(+, out, in)) setup =
+            (in = $d_in; out = $d_out)
+        tune!(cuda_lib_b)
+        SUITE["CUDA_LIB"][T][N] = run(cuda_lib_b)
 
-        SUITE["CPU"][T][N] =
+        cpu_b =
             @benchmarkable Base.accumulate!(+, out, in) setup = (in = $h_in; out = $h_out)
+        tune!(cpu_b)
+        SUITE["CPU"][T][N] = run(cpu_b)
     end
 end
 
-tune!(SUITE; verbose = true)
-result = run(SUITE; verbose = true)
-BenchmarkTools.save("benchmark_results.json", result)
+BenchmarkTools.save("benchmark_results.json", SUITE)
