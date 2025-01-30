@@ -6,8 +6,8 @@ using Random
 BenchmarkTools.DEFAULT_PARAMETERS.seconds = 10.0
 
 RNG = Xoshiro(137)  # Fixed seed
-SIZES = [Int64(2^i) for i = 0:2:28]
-TYPES = (Float16, Float32, Float64, Int32, Int64, ComplexF32, ComplexF64)
+SIZES = [Int64(2^i) for i = 1:2:25]
+TYPES = (Float32, Float64, Int32, Int64, ComplexF32, ComplexF64)
 
 SUITE = BenchmarkGroup()
 
